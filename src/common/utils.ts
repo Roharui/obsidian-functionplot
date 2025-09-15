@@ -1,7 +1,7 @@
 import { Editor, parseYaml } from "obsidian";
 import type ObsidianFunctionPlot from "../main";
 import { PlotOptions, Line } from "./types";
-import { type FunctionPlotOptions } from "function-plot/dist/types";
+import { FunctionPlotOptions } from "function-plot/dist/types";
 import createStylingPlugin from "../plugins/styling";
 import functionPlot, { Chart } from "function-plot";
 
@@ -95,6 +95,44 @@ export async function createPlot(
 }
 
 /**
+ * Create a plot in the specified `target` element.
+ * @param options The options for the plot
+ * @param target The html element to target
+ * @param plugin A reference to the plugin (accessed for settings)
+ * @returns The chart object of the created plot
+ */
+export async function createJSPlot(
+  options: FunctionPlotOptions,
+  target: HTMLElement,
+  plugin: ObsidianFunctionPlot
+): Promise<Chart> {
+  try {
+
+    let contentsBounds = target.offsetWidth;
+
+    let width = options.width || 800;
+    let height = options.height || 500;
+    let ratio = contentsBounds / width;
+
+    options.width = contentsBounds;
+    options.height = height * ratio;
+
+    const fPlotOptions: FunctionPlotOptions = {
+      ...options,
+      width,
+      height,
+      target: target,
+      plugins: [createStylingPlugin(plugin)]
+    };
+    const plot = functionPlot(fPlotOptions);
+
+    return plot;
+  } catch (e) {
+    console.debug(e);
+  }
+}
+
+/**
  * Render the plot as an image element using a data url.
  * @param plugin A reference to the plugin
  * @param editor A reference to the active editor
@@ -135,4 +173,14 @@ export function parseCodeBlock(content: string): [object, string[]] {
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
   return [header, functions];
+}
+
+export function parseCodeJSBlock(content: string): any {
+  let header = {}
+  try {
+    header = JSON.parse(content);
+  } catch (e) {
+    header = eval(`Object.assign({}, ${content})`);
+  }
+  return header;
 }

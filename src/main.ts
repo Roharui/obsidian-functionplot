@@ -1,12 +1,13 @@
 import { MarkdownPostProcessorContext, Plugin, Editor } from "obsidian";
 import CreatePlotModal from "./app/CreatePlotModal";
 import SettingsTab from "./app/SettingsTab";
-import { createPlot, parseCodeBlock } from "./common/utils";
+import { createPlot, createJSPlot, parseCodeBlock, parseCodeJSBlock } from "./common/utils";
 import { PlotOptions, PluginSettings } from "./common/types";
 import {
   DEFAULT_PLOT_OPTIONS,
   DEFAULT_PLUGIN_SETTINGS,
 } from "./common/defaults";
+import { FunctionPlotOptions } from "function-plot";
 
 export default class ObsidianFunctionPlot extends Plugin {
   settings: PluginSettings;
@@ -30,10 +31,15 @@ export default class ObsidianFunctionPlot extends Plugin {
       "functionplot",
       this.createFunctionPlotHandler(this)
     );
-  }
 
-  async loadSettings() {
-    this.settings = Object.assign(
+    this.registerMarkdownCodeBlockProcessor(
+      "functionplotjs", 
+      this.createFunctionPlotJSHandler(this)
+    );
+}
+
+async loadSettings() {
+this.settings = Object.assign(
       {},
       DEFAULT_PLUGIN_SETTINGS,
       await this.loadData()
@@ -64,6 +70,28 @@ export default class ObsidianFunctionPlot extends Plugin {
         { functions }
       );
       await createPlot(options, el, plugin);
+    };
+  }
+
+  /**
+   * A closure creating a code-block handler that also has access to the plugin object
+   * through the outer function's scope.
+   * @param plugin The plugin
+   * @returns The code-block handler
+   */
+  createFunctionPlotJSHandler(plugin: ObsidianFunctionPlot) {
+    return async (
+      source: string,
+      el: HTMLElement,
+      _ctx: MarkdownPostProcessorContext /* eslint-disable-line no-unused-vars, @typescript-eslint/no-unused-vars */
+    ) => {
+      const plot = parseCodeJSBlock(source);
+      const options: FunctionPlotOptions = Object.assign(
+        {},
+        DEFAULT_PLOT_OPTIONS,
+        plot
+      );
+      await createJSPlot(options, el, plugin);
     };
   }
 }
